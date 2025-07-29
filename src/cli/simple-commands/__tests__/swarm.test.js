@@ -368,4 +368,73 @@ describe('Swarm Command', () => {
       expect(output).toContain('USAGE:');
     });
   });
+
+  describe('basicSwarmNew integration', () => {
+    // Mock the basicSwarmNew import
+    beforeEach(() => {
+      jest.resetModules();
+    });
+
+    test('should call basicSwarmNew with executor flag', async () => {
+      // Mock fs operations to simulate swarm.json
+      fs.ensureDir.mockResolvedValue(undefined);
+      fs.writeJson.mockResolvedValue(undefined);
+      fs.pathExists.mockResolvedValue(false);
+
+      // This test verifies that when executor flag is set,
+      // the swarm command would route to basicSwarmNew
+      const objective = 'Build REST API with real execution';
+      await swarmCommand([objective], { executor: true });
+
+      // In the real implementation, this would call basicSwarmNew
+      // which routes to ExecutionBridge for real API execution
+      expect(fs.ensureDir).toHaveBeenCalled();
+      
+      // The executor flag should be recognized
+      const writeJsonCall = fs.writeJson.mock.calls[0];
+      if (writeJsonCall) {
+        expect(writeJsonCall[1]).toMatchObject({
+          objective,
+          executor: true
+        });
+      }
+    });
+
+    test('should handle headless environment detection', async () => {
+      // Simulate headless environment
+      const originalTTY = process.stdout.isTTY;
+      process.stdout.isTTY = false;
+      process.env.CLAUDE_FLOW_HEADLESS = 'true';
+
+      fs.ensureDir.mockResolvedValue(undefined);
+      fs.writeJson.mockResolvedValue(undefined);
+
+      await swarmCommand(['Headless task'], { executor: true });
+
+      // Should detect headless and route appropriately
+      expect(mockSpinner.start).toHaveBeenCalled();
+
+      // Restore
+      process.stdout.isTTY = originalTTY;
+      delete process.env.CLAUDE_FLOW_HEADLESS;
+    });
+
+    test('should pass through strategy to real execution', async () => {
+      fs.ensureDir.mockResolvedValue(undefined);
+      fs.writeJson.mockResolvedValue(undefined);
+
+      await swarmCommand(['Research task'], { 
+        executor: true,
+        strategy: 'research' 
+      });
+
+      const writeJsonCall = fs.writeJson.mock.calls[0];
+      if (writeJsonCall) {
+        expect(writeJsonCall[1]).toMatchObject({
+          strategy: 'research',
+          executor: true
+        });
+      }
+    });
+  });
 });

@@ -1,0 +1,23 @@
+feat: Add headless execution support for swarm command with real Claude API integration
+
+- Fix basicSwarmNew undefined error that crashes swarm in headless environments
+- Implement real Claude API execution for headless/remote environments
+- Add automatic headless detection (no TTY, CI, Docker, SSH)
+- Enable graceful shutdown preventing hanging processes in containers
+- Replace mock execution with actual AI agent orchestration
+
+Specifically fixes: npx claude-flow@alpha swarm in headless environments
+
+Key features:
+- Automatic routing to API executor when no GUI available
+- Multi-agent orchestration via Claude API
+- Clean process exit after completion
+- --executor flag forces API mode even in interactive terminals
+
+Tested in:
+- Docker containers
+- GitHub Actions
+- AWS Lambda
+- SSH sessions
+
+Breaking changes: None - uses --executor flag or auto-detects headless

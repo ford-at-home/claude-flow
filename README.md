@@ -31,6 +31,50 @@
 
 > 🔥 **Revolutionary AI Coordination**: Build faster, smarter, and more efficiently with AI-powered development orchestration
 
+## 🌐 **Headless & Remote Execution**
+
+**Claude-Flow v2 Alpha** includes a comprehensive headless execution system for server environments, containerization, and CI/CD pipelines. The headless mode provides REST APIs, WebSocket integration, and programmatic access without GUI dependencies.
+
+### **🖥️ Quick Headless Setup**
+
+```bash
+# 1. Set environment variables for headless mode
+export CLAUDE_FLOW_HEADLESS=true
+export ANTHROPIC_API_KEY=sk-ant-your-key-here
+export PORT=3000
+
+# 2. Start the headless API server
+npx claude-flow@alpha headless start --port 3000
+
+# 3. Create swarms via REST API
+curl -X POST http://localhost:3000/api/swarm/create \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: your-api-key" \
+  -d '{"objective": "Build a REST API", "strategy": "development"}'
+
+# 4. Monitor via WebSocket
+wscat -c ws://localhost:3000/ws
+```
+
+### **📊 Headless Features**
+
+- **🔌 REST API**: Full CRUD operations for swarms, agents, and tasks
+- **⚡ WebSocket Integration**: Real-time updates and event streaming  
+- **🐳 Container Ready**: Docker and Kubernetes deployment support
+- **🔐 Security**: JWT authentication, API keys, rate limiting
+- **📈 Monitoring**: Health checks, metrics, and system diagnostics
+- **☁️ Cloud Native**: AWS Batch, EC2, and serverless deployment guides
+
+### **🎯 Use Cases**
+
+- **CI/CD Integration**: Automated testing and deployment workflows
+- **Serverless Functions**: AWS Lambda, Vercel, and cloud functions
+- **Container Orchestration**: Docker Swarm, Kubernetes clusters
+- **Remote Development**: Headless development environments
+- **API Integration**: Embed AI coordination in existing applications
+
+> 📖 **Complete Guide**: See [docs/REMOTE_EXECUTION_GUIDE.md](docs/REMOTE_EXECUTION_GUIDE.md) for comprehensive deployment instructions, AWS integration, and production configuration.
+
 ## ⚡ **Try v2.0.0 Alpha in 4 Commands**
 
 ### 📋 **Prerequisites**

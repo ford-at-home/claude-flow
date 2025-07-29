@@ -9,6 +9,9 @@ import { open } from 'fs/promises';
 import process from 'process';
 import path from 'path';
 
+// Import the ExecutionBridge to fix the basicSwarmNew undefined error
+import { basicSwarmNew } from '../../headless/execution-bridge.js';
+
 function showSwarmHelp() {
   console.log(`
 🐝 Claude Flow Advanced Swarm System
@@ -804,7 +807,7 @@ exit 0
     } catch (distError) {
       // Fallback to basic swarm functionality
       console.log('🚀 Advanced swarm features not available, using basic mode');
-      return await basicSwarmNew(subArgs, flags);
+      return await basicSwarmNew(args, flags);
     }
 
     // Create command context compatible with TypeScript version
@@ -1849,6 +1852,8 @@ function getAgentRecommendations(strategy, maxAgents, objective) {
 
   return recommendations[strategy] || recommendations['auto'];
 }
+
+// basicSwarmNew function is now imported from ../../headless/execution-bridge.js
 
 // Allow direct execution
 if (import.meta.main) {
