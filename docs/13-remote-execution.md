@@ -602,10 +602,14 @@ Content-Type: application/json
   "parallel": false,
   "options": {
     "includeTests": true,
-    "verbosity": "normal"
+    "verbosity": "normal",
+    "outputFormat": "json",  // Requires executor mode
+    "executor": true         // Enable built-in executor for JSON output
   }
 }
 ```
+
+**Note:** JSON output format requires the executor mode. Set `CLAUDE_FLOW_JSON_AUTO_EXECUTOR=false` to disable auto-executor behavior.
 
 **Response:**
 ```json

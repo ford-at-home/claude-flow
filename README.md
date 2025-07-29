@@ -647,6 +647,16 @@ npx claude-flow@alpha help <command>  # Detailed command help
 - **GitHub**: `github <mode>` (6 specialized modes available)
 - **Workflows**: `workflow create`, `batch process`, `pipeline create`
 
+### **📊 JSON Output Mode**
+For programmatic integration, swarm commands support JSON output:
+```bash
+# JSON output requires --executor flag for structured data
+npx claude-flow@alpha swarm "objective" --output-format json --executor
+
+# Control auto-executor behavior (defaults to true for backward compatibility)
+export CLAUDE_FLOW_JSON_AUTO_EXECUTOR=false  # Disable auto-executor for JSON
+```
+
 ---
 
 ## 🧪 **Alpha Testing & Development**

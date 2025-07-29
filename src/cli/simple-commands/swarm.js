@@ -81,6 +81,7 @@ OPTIONS:
   --dry-run                  Show configuration without executing
   --executor                 Use built-in executor instead of Claude Code
   --output-format <format>   Output format: json, text (default: text)
+                            Note: JSON format requires --executor flag for structured output
   --output-file <path>       Save output to file instead of stdout
   --no-interactive           Run in non-interactive mode (auto-enabled with --output-format json)
   --auto                     (Deprecated: auto-permissions enabled by default)
@@ -120,9 +121,25 @@ export async function swarmCommand(args, flags) {
   const isAnalysisMode = flags && (flags.analysis || flags['read-only']);
   const analysisMode = isAnalysisMode ? 'analysis' : 'standard';
 
-  // For JSON output, we need to ensure executor mode since Claude Code doesn't return structured JSON
+  // For JSON output, check if executor mode is needed
   if (isJsonOutput && !(flags && flags.executor)) {
-    flags = { ...(flags || {}), executor: true };
+    // Check for explicit opt-out via environment variable
+    const autoExecutorForJson = process.env.CLAUDE_FLOW_JSON_AUTO_EXECUTOR !== 'false';
+    
+    if (autoExecutorForJson) {
+      // Auto-enable executor for JSON output (current behavior)
+      flags = { ...(flags || {}), executor: true };
+      
+      // Only show notice if not in non-interactive mode
+      if (!isNonInteractive && process.stderr.isTTY) {
+        console.error('ℹ️  Using --executor mode for JSON output (set CLAUDE_FLOW_JSON_AUTO_EXECUTOR=false to disable)');
+      }
+    } else {
+      // User explicitly disabled auto-executor
+      console.error('❌ Error: JSON output requires --executor flag when CLAUDE_FLOW_JSON_AUTO_EXECUTOR=false');
+      console.error('   Run with: claude-flow swarm "objective" --output-format json --executor');
+      process.exit(1);
+    }
   }
 
   // Check if we should use the old executor (opt-in with --executor flag)
@@ -1158,6 +1175,7 @@ OPTIONS:
   --dry-run                  Show configuration without executing
   --executor                 Use built-in executor instead of Claude Code
   --output-format <format>   Output format: json, text (default: text)
+                            Note: JSON format requires --executor flag for structured output
   --output-file <path>       Save output to file instead of stdout
   --no-interactive           Run in non-interactive mode (auto-enabled with --output-format json)
   --auto                     (Deprecated: auto-permissions enabled by default)

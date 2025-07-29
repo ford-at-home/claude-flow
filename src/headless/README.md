@@ -648,6 +648,9 @@ export PORT="3000"
 export CLAUDE_FLOW_MAX_AGENTS="10"
 export CLAUDE_FLOW_TIMEOUT="600000"
 export LOG_LEVEL="info"
+
+# JSON output configuration
+export CLAUDE_FLOW_JSON_AUTO_EXECUTOR="true"  # Default: auto-enable executor for JSON
 ```
 
 ### 3. Health Checks
