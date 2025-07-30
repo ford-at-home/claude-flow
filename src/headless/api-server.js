@@ -80,7 +80,7 @@ export class HeadlessAPIServer {
         res.json({
           status: 'healthy',
           timestamp: new Date().toISOString(),
-          version: '2.0.0-alpha.75',
+          version: '2.0.0-alpha.79',
           mode: 'headless',
           activeSwarms: this.activeSwarms.size,
           connectedClients: this.connectedClients.size
