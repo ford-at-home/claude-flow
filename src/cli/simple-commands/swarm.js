@@ -599,6 +599,7 @@ The swarm should be self-documenting - use memory_store to save all important in
       const claudeProcess = spawn('claude', claudeArgs, {
         stdio: 'inherit',
         shell: false,
+        detached: true,  // Run in separate process group
       });
 
       console.log('✓ Claude Code launched with swarm coordination prompt!');
@@ -612,15 +613,22 @@ The swarm should be self-documenting - use memory_store to save all important in
       // Handle process events
       claudeProcess.on('error', (err) => {
         console.error('❌ Failed to launch Claude Code:', err.message);
+        process.exit(1);
       });
 
-      // Don't wait for completion - let it run
-      return;
+      // Detach the claude process and exit completely
+      claudeProcess.unref();
+      
+      // Schedule immediate exit
+      setImmediate(() => {
+        process.exit(0);
+      });
     } catch (error) {
       console.error('❌ Failed to spawn Claude Code:', error.message);
       console.log('\nFalling back to built-in executor...');
       // Fall through to executor implementation
     }
+    return; // Exit after spawning claude
   }
 
   // Check if we should run in background mode
