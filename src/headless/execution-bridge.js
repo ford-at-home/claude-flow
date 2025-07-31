@@ -1,6 +1,90 @@
 /**
- * ExecutionBridge - Connects CLI commands to real execution systems
- * This is the critical missing piece that enables headless operation
+ * ExecutionBridge - Unified Swarm Execution Orchestrator
+ * 
+ * This is the central execution coordinator for Claude-Flow swarm operations,
+ * providing intelligent routing between interactive and headless execution modes
+ * based on environment detection and user preferences.
+ * 
+ * ARCHITECTURAL PURPOSE:
+ * =====================
+ * 
+ * The ExecutionBridge was created to solve the "remote-execution problem" where
+ * Claude-Flow swarm commands needed to work seamlessly across different environments:
+ * 
+ * - LOCAL DEVELOPMENT: Interactive GUI-based collaboration with Claude Code
+ * - CI/CD PIPELINES: Headless API-based execution with structured output
+ * - DOCKER CONTAINERS: Headless execution without TTY dependencies
+ * - PRODUCTION DEPLOYMENTS: Reliable API-based execution with monitoring
+ * 
+ * EXECUTION MODES:
+ * ===============
+ * 
+ * 1. INTERACTIVE MODE (Default for local development)
+ *    - Environment: Local terminal with TTY available
+ *    - Dependencies: Claude Code CLI installed and accessible
+ *    - Behavior: Spawns Claude Code GUI with comprehensive MCP coordination prompts
+ *    - User Experience: Human-AI collaboration through interactive interface
+ *    - Output: Interactive session, results depend on user interaction
+ * 
+ * 2. HEADLESS MODE (Auto-detected for production environments)
+ *    - Environment: CI/CD, Docker, production (no TTY, special env vars)
+ *    - Dependencies: Claude API key (ANTHROPIC_API_KEY)
+ *    - Behavior: Direct Claude API calls with programmatic coordination
+ *    - User Experience: Command returns structured results
+ *    - Output: JSON/structured data, suitable for automation
+ * 
+ * 3. API MODE (Fallback when resources are available)
+ *    - Environment: Any environment with API key but no Claude Code CLI
+ *    - Dependencies: Claude API key only
+ *    - Behavior: Uses RealSwarmExecutor for full API-based coordination
+ *    - User Experience: Programmatic execution with real AI agents
+ *    - Output: Structured results with full swarm coordination
+ * 
+ * ROUTING DECISION LOGIC:
+ * ======================
+ * 
+ * The ExecutionBridge uses sophisticated logic to determine execution mode:
+ * 
+ * 1. Check explicit user preferences (config.headless, flags.headless, flags.executor)
+ * 2. Auto-detect environment using isHeadless() function:
+ *    - No TTY available (process.stdout.isTTY === false)
+ *    - CI/CD environment variables (CI=true, GITHUB_ACTIONS=true, etc.)
+ *    - Docker container environment (DOCKER_CONTAINER=true)
+ *    - Production environment (NODE_ENV=production)
+ * 3. Check available resources:
+ *    - Claude Code CLI availability (which claude)
+ *    - Claude API key availability (ANTHROPIC_API_KEY)
+ * 4. Select optimal execution mode based on environment and resources
+ * 
+ * ERROR HANDLING & GRACEFUL DEGRADATION:
+ * ======================================
+ * 
+ * - Missing Claude Code CLI: Falls back to API mode if key available
+ * - Missing API key: Shows clear error with setup instructions
+ * - Network failures: Retries with exponential backoff
+ * - Process failures: Proper cleanup and resource deallocation
+ * - Timeout handling: Configurable timeouts with graceful termination
+ * 
+ * INTEGRATION POINTS:
+ * ==================
+ * 
+ * - RealSwarmExecutor: Handles full API-based swarm coordination
+ * - GracefulShutdown: Ensures clean exit in all execution modes
+ * - EnvironmentConfig: Provides environment-specific configuration
+ * - SwarmCommand: Main CLI entry point that routes through this bridge
+ * 
+ * PERFORMANCE CONSIDERATIONS:
+ * ==========================
+ * 
+ * - Lazy loading: Dependencies loaded only when needed
+ * - Process pooling: Reuses processes where possible
+ * - Memory management: Proper cleanup of execution contexts
+ * - Resource monitoring: Tracks active executions for management
+ * 
+ * @class ExecutionBridge
+ * @author Claude-Flow Team
+ * @version 2.0.0-alpha.79
+ * @since 2.0.0-alpha.58 (remote-exec branch)
  */
 
 import { generateId, isHeadless, getEnvironmentConfig, timeout } from '../utils/helpers.js';
@@ -8,16 +92,69 @@ import { ensureGracefulExit } from './graceful-shutdown.js';
 import { RealSwarmExecutor } from './real-swarm-executor.js';
 
 export class ExecutionBridge {
+  /**
+   * Initialize ExecutionBridge with configuration and execution tracking
+   * 
+   * Sets up the execution environment by merging environment-specific configuration
+   * with user-provided overrides, and initializes tracking for active executions.
+   * 
+   * @constructor
+   * @param {Object} config - Configuration overrides for the execution bridge
+   * @param {boolean} [config.headless] - Force headless execution mode
+   * @param {string} [config.claudeApiKey] - Claude API key for headless execution
+   * @param {number} [config.timeout] - Default timeout for executions (ms)
+   * @param {boolean} [config.exitOnComplete] - Whether to exit process on completion
+   * @param {string} [config.outputFormat] - Default output format ('json' or 'text')
+   */
   constructor(config = {}) {
+    // Merge environment configuration with user overrides
+    // Environment config includes settings from env vars, deployment context, etc.
     this.config = {
       ...getEnvironmentConfig(),
       ...config
     };
+    
+    // Track active executions for management and cleanup
+    // Maps execution IDs to execution contexts for monitoring and termination
     this.activeExecutions = new Map();
   }
 
   /**
-   * Main entry point - routes swarm commands to appropriate execution mode
+   * Main execution orchestrator - routes swarm commands to appropriate execution mode
+   * 
+   * This is the central dispatch method that determines how to execute a swarm based on:
+   * - Environment detection (headless vs interactive)
+   * - Available resources (Claude Code CLI, API keys)
+   * - User preferences (explicit flags and configuration)
+   * 
+   * EXECUTION FLOW:
+   * 1. Generate unique execution ID for tracking
+   * 2. Create execution context with objective, flags, and timing
+   * 3. Register execution in active tracking map
+   * 4. Route to appropriate execution mode:
+   *    - executeHeadless(): For CI/CD, Docker, production environments
+   *    - executeWithAPI(): When API key available but not explicitly headless
+   *    - executeInteractive(): For local development with Claude Code GUI
+   * 5. Handle cleanup and graceful exit based on execution mode
+   * 6. Return structured results
+   * 
+   * @method executeSwarm
+   * @param {string} objective - The swarm objective/goal description
+   * @param {Object} flags - Command-line flags and options
+   * @param {boolean} [flags.headless] - Force headless execution
+   * @param {boolean} [flags.executor] - Use API executor mode
+   * @param {string} [flags.strategy] - Execution strategy ('auto', 'research', etc.)
+   * @param {string} [flags.mode] - Coordination mode ('centralized', 'distributed', etc.)
+   * @param {number} [flags['max-agents']] - Maximum agents to spawn
+   * @param {string} [flags['output-format']] - Output format preference
+   * @param {string} [flags['output-file']] - Output file path
+   * @returns {Promise<Object>} Execution results with timing, status, and artifacts
+   * 
+   * @throws {Error} When execution fails critically or dependencies are missing
+   * 
+   * @example
+   * const bridge = new ExecutionBridge({ headless: true });
+   * const result = await bridge.executeSwarm('Build a REST API', { strategy: 'development' });
    */
   async executeSwarm(objective, flags = {}) {
     const executionId = generateId('exec');
